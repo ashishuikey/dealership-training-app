@@ -23,6 +23,9 @@ function AdminDashboard({ user, onLogout }) {
   const [processingStatus, setProcessingStatus] = useState('');
   const [extractedData, setExtractedData] = useState([]);
   const [uploadError, setUploadError] = useState('');
+  const [uploadSuccess, setUploadSuccess] = useState('');
+  const [uploadProgress, setUploadProgress] = useState({});
+  const [processedFiles, setProcessedFiles] = useState([]);
   const fileInputRef = useRef(null);
   
   // URL input state
@@ -206,22 +209,36 @@ function AdminDashboard({ user, onLogout }) {
   const handleFiles = (files) => {
     const validFiles = files.filter(file => {
       const validTypes = [
+        // Images
         'image/jpeg', 'image/jpg', 'image/png', 'image/webp',
+        // Documents
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         'application/vnd.ms-excel',
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         'application/msword',
-        'application/pdf'
+        'application/pdf',
+        // Text
+        'text/plain', 'text/csv',
+        // Audio
+        'audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/mp4', 'audio/m4a',
+        'audio/x-m4a', 'audio/x-wav', 'audio/webm',
+        // Video
+        'video/mp4', 'video/mpeg', 'video/quicktime', 'video/x-ms-wmv', 'video/avi',
+        'video/x-msvideo', 'video/webm', 'video/ogg', 'video/3gpp', 'video/3gpp2'
       ];
-      const maxSize = 10 * 1024 * 1024; // 10MB
+      const maxSize = 100 * 1024 * 1024; // 100MB for video files
       
-      if (!validTypes.includes(file.type)) {
+      // Also check by file extension if MIME type is not recognized
+      const fileExt = file.name.toLowerCase();
+      const allowedExtensions = /\.(txt|csv|pdf|doc|docx|xls|xlsx|jpg|jpeg|png|webp|mp3|wav|ogg|m4a|mp4|avi|mov|wmv|webm|mkv)$/;
+      
+      if (!validTypes.includes(file.type) && !allowedExtensions.test(fileExt)) {
         setUploadError(`File ${file.name} has unsupported format`);
         return false;
       }
       
       if (file.size > maxSize) {
-        setUploadError(`File ${file.name} exceeds 10MB size limit`);
+        setUploadError(`File ${file.name} exceeds 100MB size limit`);
         return false;
       }
       
@@ -569,6 +586,7 @@ function AdminDashboard({ user, onLogout }) {
     
     setIsProcessing(true);
     setUploadError('');
+    setUploadProgress({});
     
     try {
       const formData = new FormData();
@@ -577,21 +595,34 @@ function AdminDashboard({ user, onLogout }) {
       });
       
       const token = JSON.parse(localStorage.getItem('userData'))?.token;
+      
+      // Track upload progress
       const response = await axios.post('/api/admin/process-files', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
           'Authorization': `Bearer ${token}`
+        },
+        onUploadProgress: (progressEvent) => {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          setUploadProgress(prev => ({
+            ...prev,
+            overall: percentCompleted
+          }));
         }
       });
       
       if (response.data.extractedData) {
         setExtractedData(prev => [...prev, ...response.data.extractedData]);
+        setUploadSuccess('Files processed successfully! ✅');
+        setTimeout(() => setUploadSuccess(''), 3000);
+        setProcessedFiles(selectedFiles);
         setSelectedFiles([]);
       }
     } catch (error) {
       setUploadError('Failed to process files: ' + error.message);
     } finally {
       setIsProcessing(false);
+      setTimeout(() => setUploadProgress({}), 1000);
     }
   };
 
@@ -605,14 +636,18 @@ function AdminDashboard({ user, onLogout }) {
     try {
       const token = JSON.parse(localStorage.getItem('userData'))?.token;
       const response = await axios.post('/api/admin/process-url', {
-        url: url
+        url: url,
+        token: token
       }, {
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         }
       });
       
-      if (response.data.extractedData) {
+      if (response.data.success && response.data.data) {
+        setExtractedData(prev => [...prev, response.data.data]);
+        setUrl('');
+      } else if (response.data.extractedData) {
         setExtractedData(prev => [...prev, response.data.extractedData]);
         setUrl('');
       }
@@ -922,6 +957,12 @@ function AdminDashboard({ user, onLogout }) {
               </div>
             )}
             
+            {uploadSuccess && (
+              <div className="upload-success">
+                {uploadSuccess}
+              </div>
+            )}
+            
             <div className="url-input-section">
               <h3>📎 Import from URL</h3>
               <p>Enter a URL to automatically extract vehicle information</p>
@@ -957,13 +998,13 @@ function AdminDashboard({ user, onLogout }) {
                 <div className="upload-icon">📁</div>
                 <h3>Click or Drop Files Here</h3>
                 <p>Upload product catalogs, brochures, or spec sheets</p>
-                <p className="file-size-limit">Supported: PDF, Word, Excel, Images (Max 10MB)</p>
+                <p className="file-size-limit">Supported: PDF, Word, Excel, Images, Audio, Video (Max 100MB)</p>
               </div>
               <input 
                 ref={fileInputRef}
                 type="file"
                 multiple
-                accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.webp,.txt,.csv,.mp3,.wav,.ogg,.m4a,.mp4,.avi,.mov,.wmv,.webm,.mkv"
                 onChange={handleFileSelect}
                 style={{ display: 'none' }}
               />
@@ -972,23 +1013,52 @@ function AdminDashboard({ user, onLogout }) {
                 <div className="selected-files">
                   <h4>Selected Files:</h4>
                   <div className="files-list">
-                    {selectedFiles.map((file, index) => (
-                      <div key={index} className="file-item">
-                        <div className="file-info">
-                          <span className="file-icon">📄</span>
-                          <div className="file-details">
-                            <span className="file-name">{file.name}</span>
-                            <span className="file-size">{(file.size / 1024 / 1024).toFixed(2)} MB</span>
+                    {selectedFiles.map((file, index) => {
+                      const fileType = file.type.split('/')[0];
+                      const fileExt = file.name.split('.').pop().toLowerCase();
+                      let fileIcon = '📄';
+                      
+                      if (fileType === 'image') fileIcon = '🖼️';
+                      else if (fileType === 'video') fileIcon = '🎬';
+                      else if (fileType === 'audio') fileIcon = '🎵';
+                      else if (fileExt === 'pdf') fileIcon = '📕';
+                      else if (['doc', 'docx'].includes(fileExt)) fileIcon = '📘';
+                      else if (['xls', 'xlsx'].includes(fileExt)) fileIcon = '📗';
+                      
+                      return (
+                        <div key={index} className="file-item">
+                          <div className="file-info">
+                            <span className="file-icon">{fileIcon}</span>
+                            <div className="file-details">
+                              <span className="file-name">{file.name}</span>
+                              <span className="file-size">{(file.size / 1024 / 1024).toFixed(2)} MB</span>
+                              {fileType === 'image' && (
+                                <img 
+                                  src={URL.createObjectURL(file)} 
+                                  alt={file.name} 
+                                  className="file-thumbnail"
+                                  onLoad={(e) => URL.revokeObjectURL(e.target.src)}
+                                />
+                              )}
+                              {fileType === 'video' && (
+                                <video 
+                                  src={URL.createObjectURL(file)} 
+                                  className="file-thumbnail video-thumbnail"
+                                  muted
+                                  onLoadedMetadata={(e) => URL.revokeObjectURL(e.target.src)}
+                                />
+                              )}
+                            </div>
                           </div>
+                          <button 
+                            className="remove-file-btn"
+                            onClick={() => handleRemoveFile(index)}
+                          >
+                            ❌
+                          </button>
                         </div>
-                        <button 
-                          className="remove-file-btn"
-                          onClick={() => handleRemoveFile(index)}
-                        >
-                          ❌
-                        </button>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                   <div className="upload-actions">
                     <button 
@@ -996,7 +1066,14 @@ function AdminDashboard({ user, onLogout }) {
                       disabled={isProcessing}
                       className="process-files-btn"
                     >
-                      {isProcessing ? 'Processing...' : 'Process Files'}
+                      {isProcessing ? (
+                        <>
+                          <span className="spinner"></span>
+                          Processing... {uploadProgress.overall ? `${uploadProgress.overall}%` : ''}
+                        </>
+                      ) : (
+                        'Process Files'
+                      )}
                     </button>
                     <button 
                       onClick={() => setSelectedFiles([])}
@@ -1008,6 +1085,164 @@ function AdminDashboard({ user, onLogout }) {
                   </div>
                 </div>
               )}
+              
+              {uploadProgress.overall && (
+                <div className="upload-progress-container">
+                  <div className="progress-bar">
+                    <div 
+                      className="progress-fill" 
+                      style={{ width: `${uploadProgress.overall}%` }}
+                    >
+                      {uploadProgress.overall}%
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {processedFiles.length > 0 && (
+                <div className="processed-files-section">
+                  <h3>✅ Files Successfully Added to Knowledge Base!</h3>
+                  <div className="info-message">
+                    <span className="info-icon">ℹ️</span>
+                    <div>
+                      <p><strong>Files Location:</strong> <code>backend/uploads/</code></p>
+                      <p>Gabru can now answer questions about these products! Test it in the Training tab.</p>
+                    </div>
+                  </div>
+                  <div className="processed-files-list">
+                    {processedFiles.map((file, index) => {
+                      const fileType = file.type.split('/')[0];
+                      const fileExt = file.name.split('.').pop().toLowerCase();
+                      let fileIcon = '📄';
+                      
+                      if (fileType === 'image') fileIcon = '🖼️';
+                      else if (fileType === 'video') fileIcon = '🎬';
+                      else if (fileType === 'audio') fileIcon = '🎵';
+                      else if (fileExt === 'pdf') fileIcon = '📕';
+                      else if (['doc', 'docx'].includes(fileExt)) fileIcon = '📘';
+                      else if (['xls', 'xlsx'].includes(fileExt)) fileIcon = '📗';
+                      
+                      return (
+                        <div key={index} className="processed-file-item">
+                          <span className="file-icon">{fileIcon}</span>
+                          <span className="file-name">{file.name}</span>
+                          <span className="success-icon">✅</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="action-buttons">
+                    <button 
+                      className="view-knowledge-btn"
+                      onClick={() => setActiveAdminSection('knowledge')}
+                    >
+                      📚 View Knowledge Base
+                    </button>
+                    <button 
+                      className="test-gabru-btn"
+                      onClick={() => setActiveTab('training')}
+                    >
+                      🤓 Test with Gabru
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+
+      case 'knowledge':
+        return (
+          <div className="admin-subsection">
+            <div className="subsection-header">
+              <h3>📚 Knowledge Base Management</h3>
+              <button className="back-btn" onClick={() => setActiveAdminSection('dashboard')}>
+                ← Back to Dashboard
+              </button>
+            </div>
+            
+            <div className="knowledge-info">
+              <h4>📂 File Storage Information</h4>
+              <div className="storage-details">
+                <p><strong>Storage Location:</strong> <code>backend/uploads/</code></p>
+                <p><strong>Vector Database:</strong> ChromaDB / In-Memory</p>
+                <p><strong>Processing Engine:</strong> OpenAI GPT-4</p>
+              </div>
+            </div>
+            
+            <div className="stats-grid compact">
+              <div className="stat-card compact">
+                <span className="stat-icon">📄</span>
+                <span className="stat-number">{processedFiles.length + extractedData.length}</span>
+                <span className="stat-label">Total Documents</span>
+              </div>
+              <div className="stat-card compact">
+                <span className="stat-icon">🧠</span>
+                <span className="stat-number">Active</span>
+                <span className="stat-label">AI Status</span>
+              </div>
+              <div className="stat-card compact">
+                <span className="stat-icon">🌐</span>
+                <span className="stat-number">21</span>
+                <span className="stat-label">Languages</span>
+              </div>
+            </div>
+            
+            {(processedFiles.length > 0 || extractedData.length > 0) && (
+              <div className="knowledge-content">
+                <h4>📋 Processed Knowledge Items</h4>
+                <div className="knowledge-items-grid">
+                  {processedFiles.map((file, index) => (
+                    <div key={`file-${index}`} className="knowledge-item">
+                      <div className="item-header">
+                        <span className="item-type">FILE</span>
+                        <span className="item-status active">Active</span>
+                      </div>
+                      <h5>{file.name}</h5>
+                      <p className="item-size">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                      <p className="item-info">Processed and indexed for AI training</p>
+                    </div>
+                  ))}
+                  {extractedData.slice(0, 6).map((item, index) => (
+                    <div key={`data-${index}`} className="knowledge-item">
+                      <div className="item-header">
+                        <span className="item-type">PRODUCT</span>
+                        <span className="item-status active">Active</span>
+                      </div>
+                      <h5>{item.title || item.name || `Product ${index + 1}`}</h5>
+                      {item.price && <p className="item-price">{formatPrice(item.price)}</p>}
+                      <p className="item-info">{item.description ? item.description.substring(0, 100) + '...' : 'Product information available'}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {processedFiles.length === 0 && extractedData.length === 0 && (
+              <div className="empty-knowledge">
+                <p>📁 No files in knowledge base yet</p>
+                <button 
+                  className="add-files-btn"
+                  onClick={() => setActiveAdminSection('products')}
+                >
+                  ➕ Add Product Files
+                </button>
+              </div>
+            )}
+            
+            <div className="knowledge-actions">
+              <button 
+                className="add-more-btn"
+                onClick={() => setActiveAdminSection('products')}
+              >
+                ➕ Add More Files
+              </button>
+              <button 
+                className="test-knowledge-btn"
+                onClick={() => setActiveTab('training')}
+              >
+                🤓 Chat with Gabru
+              </button>
             </div>
           </div>
         );
@@ -1338,6 +1573,12 @@ function AdminDashboard({ user, onLogout }) {
                   📊 Competitive Analysis
                 </button>
                 <button 
+                  className={`nav-item ${activeAdminSection === 'knowledge' ? 'active' : ''}`}
+                  onClick={() => setActiveAdminSection('knowledge')}
+                >
+                  📚 Knowledge Base
+                </button>
+                <button 
                   className={`nav-item ${activeAdminSection === 'settings' ? 'active' : ''}`}
                   onClick={() => setActiveAdminSection('settings')}
                 >
@@ -1507,15 +1748,15 @@ function AdminDashboard({ user, onLogout }) {
                    onClick={handleUploadClick}>
                 <div className="upload-icon">📤</div>
                 <h3>Drop files here or click to upload</h3>
-                <p>Supported formats: Images (JPG, PNG, WEBP), Excel (XLSX, XLS), Word (DOCX, DOC), PDF</p>
-                <p className="file-size-limit">Maximum file size: 10MB per file</p>
+                <p>Supported formats: Images, PDF, Word, Excel, Audio (MP3, WAV), Video (MP4, AVI, MOV)</p>
+                <p className="file-size-limit">Maximum file size: 100MB per file</p>
                 
                 <input
                   type="file"
                   ref={fileInputRef}
                   style={{ display: 'none' }}
                   multiple
-                  accept=".jpg,.jpeg,.png,.webp,.xlsx,.xls,.docx,.doc,.pdf"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.webp,.txt,.csv,.mp3,.wav,.ogg,.m4a,.mp4,.avi,.mov,.wmv,.webm,.mkv"
                   onChange={handleFileSelect}
                 />
               </div>

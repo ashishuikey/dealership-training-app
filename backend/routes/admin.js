@@ -30,24 +30,36 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit
+    fileSize: 100 * 1024 * 1024, // 100MB limit for video files
   },
   fileFilter: (req, file, cb) => {
     const allowedTypes = [
+      // Images
       'image/jpeg', 'image/jpg', 'image/png', 'image/webp',
+      // Documents
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       'application/vnd.ms-excel',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       'application/msword',
       'application/pdf',
+      // Text
       'text/plain',
-      'text/csv'
+      'text/csv',
+      // Audio
+      'audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/mp4', 'audio/m4a',
+      'audio/x-m4a', 'audio/x-wav', 'audio/webm',
+      // Video
+      'video/mp4', 'video/mpeg', 'video/quicktime', 'video/x-ms-wmv', 'video/avi',
+      'video/x-msvideo', 'video/webm', 'video/ogg', 'video/3gpp', 'video/3gpp2'
     ];
     
-    if (allowedTypes.includes(file.mimetype) || file.originalname.match(/\.(txt|csv)$/)) {
+    const fileExt = file.originalname.toLowerCase();
+    const allowedExtensions = /\.(txt|csv|pdf|doc|docx|xls|xlsx|jpg|jpeg|png|webp|mp3|wav|ogg|m4a|mp4|avi|mov|wmv|webm|mkv)$/;
+    
+    if (allowedTypes.includes(file.mimetype) || allowedExtensions.test(fileExt)) {
       cb(null, true);
     } else {
-      cb(new Error(`Unsupported file type: ${file.mimetype}`), false);
+      cb(new Error(`Unsupported file type: ${file.mimetype} (${file.originalname})`), false);
     }
   }
 });

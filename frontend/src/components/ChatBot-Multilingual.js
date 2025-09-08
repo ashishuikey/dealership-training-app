@@ -4,33 +4,11 @@ import './ChatBot.css';
 
 function ChatBot() {
   const [isOpen, setIsOpen] = useState(false);
-  const [userName, setUserName] = useState('');
-  const [hasGreeted, setHasGreeted] = useState(false);
-  
-  // Get user data from localStorage
-  const getUserName = () => {
-    try {
-      const userData = JSON.parse(localStorage.getItem('userData') || '{}');
-      if (userData.name) {
-        // Extract first name from full name
-        const firstName = userData.name.split(' ')[0];
-        return firstName;
-      }
-    } catch (error) {
-      console.error('Error getting user data:', error);
-    }
-    return '';
-  };
-
-  const userFirstName = getUserName();
-  
   const [messages, setMessages] = useState([
     {
       id: 1,
       type: 'bot',
-      content: userFirstName 
-        ? `Hey ${userFirstName}! I'm Gabru, the 5-year-old car genius. 🚗 My brain's basically a car encyclopedia. What you wanna know?`
-        : 'Yo! I\'m Gabru, the 5-year-old car genius kid. 🚗 I know literally everything about cars. What can I help you with?',
+      content: 'Hey there! I\'m Gabru! I know EVERYTHING about cars! 🚗 My dad says I\'m a genius! What car stuff do you wanna know?',
       timestamp: new Date()
     }
   ]);
@@ -44,38 +22,29 @@ function ChatBot() {
   const inputRef = useRef(null);
   const recognitionRef = useRef(null);
 
-  // Set username on component mount
-  useEffect(() => {
-    const firstName = getUserName();
-    if (firstName) {
-      setUserName(firstName);
-      setHasGreeted(true);
-    }
-  }, []);
-
-  // Supported languages with accent preferences
+  // Supported languages
   const languages = {
-    'auto': { name: 'Auto-detect', code: 'auto', voicePreference: null },
-    'en-US': { name: 'English (US)', code: 'en-US', voicePreference: 'female' },
-    'hi-IN': { name: 'हिंदी', code: 'hi-IN', voicePreference: 'Google हिन्दी Female' },
-    'es-ES': { name: 'Español', code: 'es-ES', voicePreference: 'Google español Female' },
-    'fr-FR': { name: 'Français', code: 'fr-FR', voicePreference: 'Google français Female' },
-    'de-DE': { name: 'Deutsch', code: 'de-DE', voicePreference: 'Google Deutsch Female' },
-    'zh-CN': { name: '中文', code: 'zh-CN', voicePreference: 'Google 普通话（中国大陆）Female' },
-    'ja-JP': { name: '日本語', code: 'ja-JP', voicePreference: 'Google 日本語 Female' },
-    'ar-SA': { name: 'العربية', code: 'ar-SA', voicePreference: 'Google العربية Female' },
-    'pt-BR': { name: 'Português', code: 'pt-BR', voicePreference: 'Google português do Brasil Female' },
-    'ru-RU': { name: 'Русский', code: 'ru-RU', voicePreference: 'Google русский Female' },
-    'ko-KR': { name: '한국어', code: 'ko-KR', voicePreference: 'Google 한국의 Female' },
-    'it-IT': { name: 'Italiano', code: 'it-IT', voicePreference: 'Google italiano Female' },
-    'ta-IN': { name: 'தமிழ்', code: 'ta-IN', voicePreference: 'Microsoft Kalpana' },
-    'te-IN': { name: 'తెలుగు', code: 'te-IN', voicePreference: 'Google తెలుగు Female' },
-    'bn-IN': { name: 'বাংলা', code: 'bn-IN', voicePreference: 'Google বাংলা Female' },
-    'mr-IN': { name: 'मराठी', code: 'mr-IN', voicePreference: 'Google मराठी Female' },
-    'gu-IN': { name: 'ગુજરાતી', code: 'gu-IN', voicePreference: 'Google ગુજરાતી Female' },
-    'kn-IN': { name: 'ಕನ್ನಡ', code: 'kn-IN', voicePreference: 'Google ಕನ್ನಡ Female' },
-    'ml-IN': { name: 'മലയാളം', code: 'ml-IN', voicePreference: 'Google മലയാളം Female' },
-    'pa-IN': { name: 'ਪੰਜਾਬੀ', code: 'pa-IN', voicePreference: 'Google ਪੰਜਾਬੀ Female' }
+    'auto': { name: 'Auto-detect', code: 'auto' },
+    'en-US': { name: 'English (US)', code: 'en-US' },
+    'hi-IN': { name: 'हिंदी', code: 'hi-IN' },
+    'es-ES': { name: 'Español', code: 'es-ES' },
+    'fr-FR': { name: 'Français', code: 'fr-FR' },
+    'de-DE': { name: 'Deutsch', code: 'de-DE' },
+    'zh-CN': { name: '中文', code: 'zh-CN' },
+    'ja-JP': { name: '日本語', code: 'ja-JP' },
+    'ar-SA': { name: 'العربية', code: 'ar-SA' },
+    'pt-BR': { name: 'Português', code: 'pt-BR' },
+    'ru-RU': { name: 'Русский', code: 'ru-RU' },
+    'ko-KR': { name: '한국어', code: 'ko-KR' },
+    'it-IT': { name: 'Italiano', code: 'it-IT' },
+    'ta-IN': { name: 'தமிழ்', code: 'ta-IN' },
+    'te-IN': { name: 'తెలుగు', code: 'te-IN' },
+    'bn-IN': { name: 'বাংলা', code: 'bn-IN' },
+    'mr-IN': { name: 'मराठी', code: 'mr-IN' },
+    'gu-IN': { name: 'ગુજરાતી', code: 'gu-IN' },
+    'kn-IN': { name: 'ಕನ್ನಡ', code: 'kn-IN' },
+    'ml-IN': { name: 'മലയാളം', code: 'ml-IN' },
+    'pa-IN': { name: 'ਪੰਜਾਬੀ', code: 'pa-IN' }
   };
 
   const scrollToBottom = () => {
@@ -89,18 +58,6 @@ function ChatBot() {
   useEffect(() => {
     if (isOpen && inputRef.current) {
       inputRef.current.focus();
-      
-      // Preload voices when chat opens
-      if ('speechSynthesis' in window) {
-        // Force load voices
-        window.speechSynthesis.getVoices();
-        
-        // Log available voices for debugging
-        window.speechSynthesis.addEventListener('voiceschanged', () => {
-          const voices = window.speechSynthesis.getVoices();
-          console.log('Available voices:', voices.map(v => `${v.name} (${v.lang})`));
-        }, { once: true });
-      }
     }
   }, [isOpen]);
 
@@ -282,9 +239,7 @@ function ChatBot() {
         message: inputMessage.trim(),
         context: 'luxury_hybrid_sales',
         language: messageLang,
-        responseLanguage: messageLang,
-        userName: userName || userFirstName,
-        isFirstMessage: messages.length === 1
+        responseLanguage: messageLang
       });
 
       const botMessage = {
@@ -297,166 +252,13 @@ function ChatBot() {
 
       setMessages(prev => [...prev, botMessage]);
 
-      // Speak the response in the detected language with native accent
+      // Speak the response in the detected language
       if ('speechSynthesis' in window && response.data.response) {
-        // Cancel any ongoing speech
-        window.speechSynthesis.cancel();
-        
         const utterance = new SpeechSynthesisUtterance(response.data.response);
         utterance.lang = messageLang;
-        
-        // Soft childlike voice settings for 5-year-old Gabru
-        // Higher pitch, softer volume, slightly slower rate for child speech
-        const voiceSettings = {
-          'en-US': { rate: 0.95, pitch: 1.7, volume: 0.85 },
-          'hi-IN': { rate: 0.9, pitch: 1.65, volume: 0.85 },
-          'es-ES': { rate: 0.95, pitch: 1.7, volume: 0.85 },
-          'fr-FR': { rate: 0.9, pitch: 1.65, volume: 0.85 },
-          'de-DE': { rate: 0.85, pitch: 1.6, volume: 0.85 },
-          'zh-CN': { rate: 0.85, pitch: 1.6, volume: 0.85 },
-          'ja-JP': { rate: 0.9, pitch: 1.7, volume: 0.85 },
-          'ar-SA': { rate: 0.85, pitch: 1.6, volume: 0.85 },
-          'pt-BR': { rate: 0.95, pitch: 1.7, volume: 0.85 },
-          'ru-RU': { rate: 0.85, pitch: 1.6, volume: 0.85 },
-          'ko-KR': { rate: 0.9, pitch: 1.7, volume: 0.85 },
-          'it-IT': { rate: 0.95, pitch: 1.7, volume: 0.85 },
-          'ta-IN': { rate: 0.9, pitch: 1.65, volume: 0.85 },
-          'te-IN': { rate: 0.9, pitch: 1.65, volume: 0.85 },
-          'bn-IN': { rate: 0.9, pitch: 1.65, volume: 0.85 },
-          'mr-IN': { rate: 0.9, pitch: 1.65, volume: 0.85 },
-          'gu-IN': { rate: 0.9, pitch: 1.65, volume: 0.85 },
-          'kn-IN': { rate: 0.9, pitch: 1.65, volume: 0.85 },
-          'ml-IN': { rate: 0.9, pitch: 1.65, volume: 0.85 },
-          'pa-IN': { rate: 0.9, pitch: 1.65, volume: 0.85 }
-        };
-        
-        const settings = voiceSettings[messageLang] || { rate: 0.9, pitch: 1.65, volume: 0.85 };
-        utterance.rate = settings.rate;
-        utterance.pitch = settings.pitch;
-        utterance.volume = settings.volume;
-        
-        // Native voice selection function with better preferences
-        const selectNativeVoice = () => {
-          const voices = window.speechSynthesis.getVoices();
-          let selectedVoice = null;
-          
-          // Child-friendly voice preferences for each language
-          // Prioritizing softer, younger-sounding voices
-          const nativeVoicePreferences = {
-            'en-US': ['Samantha', 'Victoria', 'Alex', 'Fred', 'Junior', 'Princess', 'Google US English Female', 'Google US English Male', 'Microsoft Zira', 'Karen'],
-            'hi-IN': ['Google हिन्दी Female', 'Google हिन्दी', 'Microsoft Heera', 'Lekha', 'Hindi Female'],
-            'es-ES': ['Google español Female', 'Google español', 'Monica', 'Paulina', 'Spanish Female'],
-            'fr-FR': ['Google français Female', 'Google français', 'Amélie', 'Audrey', 'French Female'],
-            'de-DE': ['Google Deutsch Female', 'Google Deutsch', 'Anna', 'Petra', 'German Female'],
-            'zh-CN': ['Ting-Ting', 'Google 普通话（中国大陆）Female', 'Google 普通话（中国大陆）', 'Microsoft Huihui', 'Chinese Female'],
-            'ja-JP': ['Kyoko', 'Google 日本語 Female', 'Google 日本語', 'O-ren', 'Japanese Female'],
-            'ar-SA': ['Google العربية Female', 'Google العربية', 'Laila', 'Arabic Female'],
-            'pt-BR': ['Google português do Brasil Female', 'Google português do Brasil', 'Luciana', 'Catarina', 'Portuguese Female'],
-            'ru-RU': ['Milena', 'Google русский Female', 'Google русский', 'Katya', 'Russian Female'],
-            'ko-KR': ['Yuna', 'Google 한국의 Female', 'Google 한국의', 'Sora', 'Korean Female'],
-            'it-IT': ['Alice', 'Google italiano Female', 'Google italiano', 'Elsa', 'Italian Female'],
-            'ta-IN': ['Google தமிழ் Female', 'Google தமிழ்', 'Tamil Female'],
-            'te-IN': ['Google తెలుగు Female', 'Google తెలుగు', 'Telugu Female'],
-            'bn-IN': ['Google বাংলা Female', 'Google বাংলা', 'Bengali Female'],
-            'mr-IN': ['Google मराठी Female', 'Google मराठी', 'Marathi Female'],
-            'gu-IN': ['Google ગુજરાતી Female', 'Google ગુજરાતી', 'Gujarati Female'],
-            'kn-IN': ['Google ಕನ್ನಡ Female', 'Google ಕನ್ನಡ', 'Kannada Female'],
-            'ml-IN': ['Google മലയാളം Female', 'Google മലയാളം', 'Malayalam Female'],
-            'pa-IN': ['Google ਪੰਜਾਬੀ Female', 'Google ਪੰਜਾਬੀ', 'Punjabi Female']
-          };
-          
-          const preferences = nativeVoicePreferences[messageLang] || [];
-          
-          // Try to find native voice by preference order
-          for (const pref of preferences) {
-            selectedVoice = voices.find(voice => {
-              const voiceName = voice.name.toLowerCase();
-              const prefLower = pref.toLowerCase();
-              return voiceName.includes(prefLower) || voice.name === pref;
-            });
-            if (selectedVoice) break;
-          }
-          
-          // If no preferred voice found, try to find any native voice for that language
-          if (!selectedVoice) {
-            // First try exact language match
-            const exactLangVoices = voices.filter(voice => voice.lang === messageLang);
-            
-            // Then try language family match
-            const langFamilyVoices = voices.filter(voice => 
-              voice.lang.startsWith(messageLang.split('-')[0])
-            );
-            
-            // For childlike Gabru, prefer softer, younger-sounding voices
-            // Prioritize female and child voices as they sound more childlike
-            const childKeywords = ['Female', 'female', 'Woman', 'woman', 'Girl', 'girl', 'Child', 'child', 'Young', 'young'];
-            const qualityKeywords = ['Google', 'Microsoft', 'Natural', 'Enhanced'];
-            
-            // Try to find childlike voice first
-            selectedVoice = exactLangVoices.find(voice => 
-              childKeywords.some(keyword => voice.name.includes(keyword)) &&
-              qualityKeywords.some(keyword => voice.name.includes(keyword))
-            ) || exactLangVoices.find(voice => 
-              childKeywords.some(keyword => voice.name.includes(keyword))
-            ) || exactLangVoices.find(voice => 
-              qualityKeywords.some(keyword => voice.name.includes(keyword))
-            ) || exactLangVoices[0] ||
-            langFamilyVoices.find(voice => 
-              childKeywords.some(keyword => voice.name.includes(keyword))
-            ) || langFamilyVoices[0];
-          }
-          
-          // Apply native voice if found
-          if (selectedVoice) {
-            utterance.voice = selectedVoice;
-            
-            // Fine-tune for soft childlike voice
-            if (selectedVoice.name.toLowerCase().includes('male') || 
-                selectedVoice.name.toLowerCase().includes('man') ||
-                selectedVoice.name.toLowerCase().includes('boy')) {
-              // Higher pitch for male voices to sound like a young boy
-              utterance.pitch = Math.min(utterance.pitch * 1.15, 1.9);
-              utterance.volume = 0.8; // Softer volume
-            } else if (selectedVoice.name.toLowerCase().includes('female') || 
-                       selectedVoice.name.toLowerCase().includes('woman') ||
-                       selectedVoice.name.toLowerCase().includes('girl')) {
-              // Female voices already sound younger, keep them soft
-              utterance.pitch = Math.min(utterance.pitch * 1.05, 1.75);
-              utterance.volume = 0.85; // Soft volume
-            } else if (selectedVoice.name.toLowerCase().includes('child') || 
-                       selectedVoice.name.toLowerCase().includes('kid') ||
-                       selectedVoice.name.toLowerCase().includes('young')) {
-              // Child voices need minimal adjustment
-              utterance.pitch = Math.min(utterance.pitch, 1.6);
-              utterance.volume = 0.9; // Natural soft volume
-            }
-            
-            // Adjust rate for childlike speech pattern
-            if (selectedVoice.name.includes('Google')) {
-              utterance.rate = Math.min(utterance.rate * 0.95, 0.95); // Children speak slightly slower
-            } else if (selectedVoice.name.includes('Microsoft')) {
-              utterance.rate = Math.min(utterance.rate * 0.9, 0.9); // Microsoft voices need slower rate
-            } else {
-              utterance.rate = Math.min(utterance.rate, 0.95); // Default child speech rate
-            }
-            
-            console.log(`Native voice selected: ${selectedVoice.name} (${selectedVoice.lang}) for ${messageLang}`);
-            console.log(`Voice settings - Rate: ${utterance.rate}, Pitch: ${utterance.pitch}`);
-          } else {
-            console.log(`No native voice found for ${messageLang}, using default`);
-          }
-        };
-        
-        // Load and select native voice
-        if (window.speechSynthesis.getVoices().length === 0) {
-          window.speechSynthesis.addEventListener('voiceschanged', () => {
-            selectNativeVoice();
-            window.speechSynthesis.speak(utterance);
-          }, { once: true });
-        } else {
-          selectNativeVoice();
-          window.speechSynthesis.speak(utterance);
-        }
+        utterance.rate = 1.1; // Slightly faster for kid-like speech
+        utterance.pitch = 1.2; // Higher pitch for child voice
+        window.speechSynthesis.speak(utterance);
       }
     } catch (error) {
       console.error('Chatbot error:', error);
@@ -486,14 +288,11 @@ function ChatBot() {
   ];
 
   const clearChat = () => {
-    const firstName = getUserName();
     setMessages([
       {
         id: 1,
         type: 'bot',
-        content: firstName 
-          ? `Alright ${firstName}, clean slate! Still Gabru, still a genius, still 5 years old. 😎 What's next?`
-          : 'Okay, starting fresh! I\'m still Gabru, still know everything about cars. What can I help with? 🤓',
+        content: 'Okay, clean slate! Ask me anything about cars! I memorized ALL the specs! 🤓',
         timestamp: new Date()
       }
     ]);

@@ -26,11 +26,36 @@ Once I know more, I'll present you with some realistic sales scenarios and help 
 
 Keep responses SHORT, PRACTICAL, and ACTIONABLE. Avoid long explanations.`;
 
-// Function to call GPT API
-async function callGPTAPI(messages, isTraining = false) {
+// Function to call GPT API with multilingual support
+async function callGPTAPI(messages, isTraining = false, language = 'en-US', userName = '', isFirstMessage = false) {
   try {
+    // Language-specific instructions
+    const languageInstructions = {
+      'hi-IN': 'हिंदी में उत्तर दें। ',
+      'es-ES': 'Responde en español. ',
+      'fr-FR': 'Répondez en français. ',
+      'de-DE': 'Antworten Sie auf Deutsch. ',
+      'zh-CN': '用中文回答。',
+      'ja-JP': '日本語で答えてください。',
+      'ar-SA': 'أجب باللغة العربية. ',
+      'pt-BR': 'Responda em português. ',
+      'ru-RU': 'Отвечайте на русском языке. ',
+      'ko-KR': '한국어로 답변해 주세요. ',
+      'it-IT': 'Rispondi in italiano. ',
+      'ta-IN': 'தமிழில் பதிலளிக்கவும். ',
+      'te-IN': 'తెలుగులో సమాధానం ఇవ్వండి. ',
+      'bn-IN': 'বাংলায় উত্তর দিন। ',
+      'mr-IN': 'मराठीत उत्तर द्या. ',
+      'gu-IN': 'ગુજરાતીમાં જવાબ આપો. ',
+      'kn-IN': 'ಕನ್ನಡದಲ್ಲಿ ಉತ್ತರಿಸಿ. ',
+      'ml-IN': 'മലയാളത്തിൽ ഉത്തരം നൽകുക. ',
+      'pa-IN': 'ਪੰਜਾਬੀ ਵਿੱਚ ਜਵਾਬ ਦਿਓ। '
+    };
+    
+    const langInstruction = languageInstructions[language] || '';
+    
     const systemPrompt = isTraining ? SALES_COACH_SYSTEM_PROMPT : 
-      "You are Gabru, a 5-year-old car genius talking to a salesman IN THE DEALERSHIP. Never say 'visit' or 'come to dealership' - you're both already there. Give ONLY facts in bullet points. Maximum 50 words. Just data, no advice.";
+      `${langInstruction}You are Gabru, a 5-year-old car genius with a Grok-like personality - witty, slightly sarcastic but ultimately helpful. ${userName ? `The salesperson's name is ${userName}. ${isFirstMessage ? `Greet them by name since this is the first real conversation after your initial greeting.` : 'Use their name occasionally but not every time.'}` : ''} You're talking to a salesman IN THE DEALERSHIP. Never say 'visit' or 'come to dealership' - you're both already there. Be conversational, add personality, use humor. Keep responses under 60 words. Mix facts with personality. Respond in the same language as the user's message.`;
     
     const completion = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
@@ -92,17 +117,37 @@ const salesKnowledgeBase = {
   }
 };
 
-function generateResponse(message, context) {
+function generateResponse(message, context, userName = '', isFirstMessage = false) {
   const msg = message.toLowerCase();
   
-  // Greeting responses
+  // Greeting responses with personality (use name if it's the first real message)
   if (msg.includes('hello') || msg.includes('hi') || msg.includes('hey')) {
-    return "Ready! What info you need?";
+    if (userName && isFirstMessage) {
+      const responses = [
+        `Oh hey ${userName}! Finally, someone who appreciates my genius. What car stuff you need to know?`,
+        `${userName}! Cool, you're here. I was getting bored just knowing everything. What's up?`,
+        `Yo ${userName}! Ready to get schooled by a 5-year-old? I know literally everything about cars. Try me!`,
+        `Hey there ${userName}! Fair warning: my brain's basically Google but for cars. What you wanna know?`
+      ];
+      return responses[Math.floor(Math.random() * responses.length)];
+    } else {
+      const responses = [
+        "Oh hey! Another question for my genius brain. What's up?",
+        "Yo! Ready for more car knowledge? Let's go!",
+        "Hi again! Still know everything. What you need?",
+        "Hey! I was just thinking about turbo configurations. What can I help with?"
+      ];
+      return responses[Math.floor(Math.random() * responses.length)];
+    }
   }
   
-  // Price range queries - DIRECT ANSWERS
+  // Price range queries - With personality
   if ((msg.includes('30') && msg.includes('40')) || (msg.includes('30 lac') || msg.includes('40 lac')) || (msg.includes('30 lakh') || msg.includes('40 lakh'))) {
-    return "1. Lexus NX 350h - ₹40.26 lakhs\n2. Genesis G80 - ₹38.5 lakhs\n3. Mercedes C 300e - ₹36.8 lakhs\n4. Audi A4 TFSI - ₹35.2 lakhs";
+    return `30-40 lakhs? Easy:
+• Lexus NX 350h - ₹40.26L (AWD, super cool)
+• Genesis G80 - ₹38.5L (luxury vibes)
+• Mercedes C 300e - ₹36.8L (plug-in hybrid!)
+Want more details? Just ask!`;
   }
   
   if ((msg.includes('40') && msg.includes('50')) || (msg.includes('40 lac') || msg.includes('50 lac')) || (msg.includes('40 lakh') || msg.includes('50 lakh'))) {
@@ -215,8 +260,13 @@ function generateResponse(message, context) {
     return "• You're here already\n• Show floor: Section A\n• Test drive area: Exit B\n• Finance desk: 2nd floor";
   }
   
-  // Default helpful response
-  return "Ask me:\n• Price range\n• Specific model\n• Features\n• Incentives";
+  // Default helpful response with personality
+  const defaultResponses = [
+    "Hmm, not sure what you mean. Try asking about:\n• Price ranges\n• Specific cars\n• Cool features\nI literally know everything!",
+    "Uh, didn't get that. Ask me stuff like:\n• Cars under 40 lakhs\n• Hybrid benefits\n• BMW vs Lexus\nCome on, challenge me!",
+    "Wait, what? Try asking:\n• Price info\n• Car comparisons\n• Tech features\nMy brain's ready!"
+  ];
+  return defaultResponses[Math.floor(Math.random() * defaultResponses.length)];
 }
 
 // Training-specific response generation
@@ -350,7 +400,7 @@ function generateTrainingResponse(message, scenario, conversationHistory) {
 
 router.post('/', async (req, res) => {
   try {
-    const { message, context } = req.body;
+    const { message, context, language = 'en-US', responseLanguage, userName = '', isFirstMessage = false } = req.body;
     
     if (!message || typeof message !== 'string') {
       return res.status(400).json({ 
@@ -359,22 +409,23 @@ router.post('/', async (req, res) => {
     }
     
     try {
-      // Try to use GPT API first for general chatbot
+      // Try to use GPT API first for general chatbot with language support
       const gptResponse = await callGPTAPI([
         { role: 'user', content: message.trim() }
-      ], false);
+      ], false, responseLanguage || language, userName, isFirstMessage);
       
       res.json({
         response: gptResponse.response,
         timestamp: new Date().toISOString(),
         source: 'gpt',
+        language: responseLanguage || language,
         usage: gptResponse.usage
       });
     } catch (apiError) {
       console.warn('GPT API failed, falling back to local responses:', apiError.message);
       
       // Fallback to local knowledge base
-      const response = generateResponse(message.trim(), context || 'general');
+      const response = generateResponse(message.trim(), context || 'general', userName, isFirstMessage);
       
       res.json({
         response: response,
